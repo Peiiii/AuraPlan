@@ -6,7 +6,8 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Correctly initialize with process.env.API_KEY directly as per guidelines
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async getCreativeInsight(scale: TimeScale, tasks: string[]) {
@@ -43,7 +44,9 @@ export class GeminiService {
         }
       });
 
-      return JSON.parse(response.text);
+      // Using .text property to access generated content as per latest SDK guidelines
+      const text = response.text || "{}";
+      return JSON.parse(text);
     } catch (error) {
       console.error("Gemini Error:", error);
       return {
