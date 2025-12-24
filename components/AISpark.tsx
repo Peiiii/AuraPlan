@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TimeScale, AIInsight } from '../types';
 import { geminiService } from '../services/geminiService';
 import { SCALE_CONFIG } from '../constants';
@@ -13,8 +13,13 @@ export const AISpark: React.FC<AISparkProps> = ({ scale, tasks }) => {
   const [insight, setInsight] = useState<AIInsight | null>(null);
   const [loading, setLoading] = useState(false);
   const config = SCALE_CONFIG[scale];
+  
+  // 用于追踪任务是否真正变化
+  const prevTasksRef = useRef<string[]>([]);
+  const prevScaleRef = useRef<TimeScale | null>(null);
 
   const fetchInsight = async () => {
+    if (tasks.length === 0) return;
     setLoading(true);
     const result = await geminiService.getCreativeInsight(scale, tasks);
     setInsight(result);
@@ -22,11 +27,26 @@ export const AISpark: React.FC<AISparkProps> = ({ scale, tasks }) => {
   };
 
   useEffect(() => {
-    fetchInsight();
-  }, [scale]);
+    // 只有在以下情况触发：
+    // 1. 尺度切换
+    // 2. 任务从无到有
+    // 3. 任务内容发生变化（通过简单的字符串化比较）
+    const tasksChanged = JSON.stringify(tasks) !== JSON.stringify(prevTasksRef.current);
+    const scaleChanged = scale !== prevScaleRef.current;
+
+    if ((tasksChanged || scaleChanged) && tasks.length > 0) {
+      fetchInsight();
+    }
+    
+    prevTasksRef.current = tasks;
+    prevScaleRef.current = scale;
+  }, [scale, tasks]);
+
+  // 如果没有任务内容，则不渲染反思组件
+  if (tasks.length === 0) return null;
 
   return (
-    <div className={`mt-8 p-6 rounded-3xl ${config.light} border border-white/50 relative overflow-hidden transition-all duration-500`}>
+    <div className={`mt-8 p-6 rounded-[2rem] ${config.light} border border-white/50 relative overflow-hidden transition-all duration-500 animate-in fade-in zoom-in-95`}>
       <div className="absolute top-0 right-0 p-4">
         <button 
           onClick={fetchInsight}
@@ -41,7 +61,7 @@ export const AISpark: React.FC<AISparkProps> = ({ scale, tasks }) => {
       </div>
 
       <div className="relative z-10 space-y-4">
-        <h3 className={`text-xs font-bold uppercase tracking-widest ${config.text}`}>AI 深度反思</h3>
+        <h3 className={`text-xs font-bold uppercase tracking-widest ${config.text} opacity-70`}>AI 深度反思</h3>
         {loading ? (
           <div className="space-y-3 animate-pulse">
             <div className="h-4 bg-white/40 rounded w-3/4"></div>
@@ -53,13 +73,13 @@ export const AISpark: React.FC<AISparkProps> = ({ scale, tasks }) => {
               “{insight?.vision}”
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="bg-white/40 p-3 rounded-2xl">
-                <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase">想象力跃迁</span>
-                <p className="text-sm text-gray-600">{insight?.suggestion}</p>
+              <div className="bg-white/40 p-4 rounded-2xl border border-white/50">
+                <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-tighter">想象力跃迁</span>
+                <p className="text-sm text-gray-600 leading-snug">{insight?.suggestion}</p>
               </div>
-              <div className="bg-white/40 p-3 rounded-2xl">
-                <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase">创意引导</span>
-                <p className="text-sm text-gray-600">{insight?.prompt}</p>
+              <div className="bg-white/40 p-4 rounded-2xl border border-white/50">
+                <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-tighter">创意引导词</span>
+                <p className="text-sm text-gray-600 leading-snug">{insight?.prompt}</p>
               </div>
             </div>
           </>
